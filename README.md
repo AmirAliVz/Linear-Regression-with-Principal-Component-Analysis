@@ -39,12 +39,12 @@ Both the Kaiser Rule and Elbow Rule agree on retaining **6 principal components*
 
 | Component | Eigenvalue | % Variance Explained |
 |---|---|---|
-| PC1 | > 1 | Largest share |
-| PC2 | > 1 | — |
-| PC3 | > 1 | — |
-| PC4 | > 1 | — |
-| PC5 | > 1 | — |
-| PC6 | > 1 | — |
+| PC1 | > 1 | 0.19 (Largest share) |
+| PC2 | > 1 | > 0.1 |
+| PC3 | > 1 | > 0.1 |
+| PC4 | > 1 | > 0.1 |
+| PC5 | > 1 | > 0.1 |
+| PC6 | > 1 | > 0.1 |
 
 > Together, the 6 retained components reduce the feature space from 14 variables to 6 uncorrelated dimensions while preserving the majority of the dataset's variance.
 

@@ -1,70 +1,68 @@
 # Housing Price Prediction — Principal Component Regression (PCR)
 
-This project applies **Principal Component Analysis (PCA)** followed by **linear regression** to predict housing prices from a set of 14 correlated continuous features. Rather than feeding raw features directly into a regression model, PCA first transforms them into a smaller set of uncorrelated principal components — eliminating multicollinearity and reducing dimensionality — before regression is applied on the reduced feature space.
-
-The analysis covers:
-
-- **Descriptive Statistics & Visualizations:** Distribution plots for all 14 continuous predictors.
-- **Standardization:** All features scaled to zero mean and unit variance before PCA, ensuring equal contribution across variables.
-- **PCA:** Full component matrix computed, with component selection guided by both the Kaiser Rule (eigenvalue > 1) and the Elbow Rule — resulting in 6 retained components.
-- **Feature Selection:** Forward stepwise selection on the 6 components, retaining 5 (PC1–PC5) as statistically significant predictors.
-- **Model Building & Evaluation:** Linear regression on selected PCs, evaluated using R², adjusted R², and MSE on both training and test sets.
-- **Assumption Verification:** Linearity, independence of errors, and homoscedasticity checked via residual and autocorrelation plots.
+A Principal Component Regression analysis on a housing dataset: standardizes 14 correlated continuous features, reduces them to a smaller set of uncorrelated principal components via PCA, selects significant components with forward stepwise OLS regression, and evaluates prediction accuracy on held-out test data.
 
 > **Note on Dataset Availability**
-> The raw CSV file has been removed from this repository as the data is proprietary and cannot be shared publicly. All descriptive visualizations and model outputs generated during the analysis have been retained in the `Figures/` folder for reference and presentation purposes.
+> The dataset has been removed from this repository for data ethics reasons. All generated visualizations, scree plots, variance charts, model summaries, and residual diagnostics are retained in the `Figures/` folder for reference and portfolio purposes.
 
 ---
 
-## Analysis Summary
+## Research Question
 
-### Variables
-
-- **Dependent:** `Price` (continuous — house sale price)
-- **Independent (pre-PCA):** `SquareFootage`, `NumBathrooms`, `NumBedrooms`, `BackyardSpace`, `CrimeRate`, `SchoolRating`, `AgeOfHome`, `DistanceToCityCenter`, `EmploymentRate`, `PropertyTaxRate`, `RenovationQuality`, `LocalAmenities`, `TransportAccess`, `Windows`
-
-| Sample Distribution Plots (Predictors) |
-|---|
-| ![AgeofHome](Figures/AgeOfHome.jpg) |
+**Can housing prices be predicted from a compressed, multicollinearity-free representation of 14 correlated property features?**
 
 ---
 
-### PCA Results
+## Why PCA Before Regression
 
-Both the Kaiser Rule and Elbow Rule agree on retaining **6 principal components**.
+Running OLS regression directly on 14 correlated predictors introduces multicollinearity — inflated standard errors, unstable coefficient estimates, and sensitivity to small data changes. PCA resolves this by:
 
-| Scree Plot | Variance Explained per Component |
-|---|---|
-| ![scree](Figures/ScreePlot(EigenValuesPCA).jpg) | ![variance](Figures/VarianceperPrincipalComponent.jpg) |
+- **Removing correlation:** Principal components are orthogonal by construction — zero correlation guaranteed.
+- **Reducing dimensionality:** 14 features → 6 components, each capturing a distinct direction of variance.
+- **Stabilizing estimates:** OLS on uncorrelated predictors produces reliable, interpretable coefficients.
 
-| Component | Eigenvalue | % Variance Explained |
+The trade-off: individual components are linear combinations of all original features, so direct per-feature interpretation is lost. The gain is model stability and generalizability.
+
+---
+
+## Why Standardization Is Not Optional
+
+PCA is sensitive to scale. A variable measured in square feet (range: thousands) would dominate one measured as a rate (range: 0–1) purely because its numbers are larger — regardless of how much information it actually carries.
+
+Every variable is standardized to mean = 0, standard deviation = 1 before PCA runs. This ensures all 14 features contribute equally to the components and that the components reflect genuine patterns, not measurement units.
+
+---
+
+## Analysis Pipeline
+
+1. Load dataset; drop categorical, binary, and non-continuous columns
+2. Standardize all 14 continuous predictors with `StandardScaler`
+3. Fit PCA on the standardized matrix; extract all eigenvalues and PC scores
+4. Apply Kaiser Rule and Elbow Rule to determine how many PCs to retain
+5. Visualize scree plot and variance explained per component
+6. Train / test split (80 / 20) on the PC score matrix
+7. Forward stepwise OLS selection to identify significant PCs
+8. Train OLS on selected components; evaluate MSE on training and test sets
+9. Residual diagnostic plots
+
+---
+
+## PC Selection — Two Rules, One Answer
+
+| | ![ScreePlot](Figures/ScreePlot(EigenValuesPCA).jpg) | ![Variance](Figures/VarianceperPrincipalComponent.jpg) |
 |---|---|---|
-| PC1 | > 1 | 0.19 (Largest share) |
-| PC2 | > 1 | > 0.1 |
-| PC3 | > 1 | > 0.1 |
-| PC4 | > 1 | > 0.1 |
-| PC5 | > 1 | > 0.1 |
-| PC6 | > 1 | > 0.1 |
 
-> Together, the 6 retained components reduce the feature space from 14 variables to 6 uncorrelated dimensions while preserving the majority of the dataset's variance.
+**Kaiser Rule:** Retain components with eigenvalue > 1 — each explains at least as much variance as one original standardized variable. Result: **6 components**.
 
----
+**Elbow Rule:** Identify the natural kink in the scree plot where the slope flattens significantly. Result: **6 components**.
 
-### Feature Selection — Forward Stepwise on PCs
+Both independent rules converge on the same answer. When competing selection criteria agree, the result is a meaningful signal rather than an artifact of the method.
 
-Forward stepwise selection on the 6 PCs retained **5 components** as significant predictors:
-
-```
-PC1, PC2, PC3, PC4, PC5
-```
-
-| Regression Summary Output |
-|---|
-| ![Summary](Figures/Summary.png) |
+**Forward stepwise selection** then narrowed 6 retained PCs to the **5 statistically significant** ones (p < 0.05): PC1, PC2, PC3, PC4, PC5.
 
 ---
 
-### Regression Equation
+## Regression Equation
 
 ```
 Price = 308,400
@@ -75,68 +73,71 @@ Price = 308,400
       -  3,445 × PC5
 ```
 
-**Coefficient highlights:**
-- **PC1** has the largest positive effect — it explains the most variance and most strongly drives predicted price upward
-- **PC4** is the second strongest positive predictor
-- **PC2 and PC3** both negatively influence predicted price
-- All five components are statistically significant (p < 0.05)
-- Durbin-Watson statistic: **1.973** — no significant autocorrelation in residuals
-
----
-
-### Assumption Checks
-
-| Residuals vs. Fitted Values & Autocorrelation of Residuals |
+| Model Summary |
 |---|
-| ![res](Figures/residuals_analysis.jpg) |
+| ![Summary](Figures/Summary.png) |
 
-Notable observations from the residual plot:
-- A floor effect is visible for low fitted values (below ~$200K), likely due to the dataset's price minimum of $85K
-- Slight heteroscedasticity detected — residual spread increases with fitted value
-- No autocorrelation detected — independence assumption is satisfied
+**Coefficient interpretation:** Each coefficient describes the change in predicted price for a one-unit increase in the corresponding PC score. Components are uncorrelated, so each coefficient is independent of the others — a property plain OLS on correlated features cannot guarantee.
+
+PC1 carries the largest positive coefficient (+59,870) and is statistically significant at p < 0.001. As the component explaining the most variance in the original feature space, its dominance here is expected.
+
+PC4 carries a substantial positive effect (+32,740). PC2 and PC3 are both negative, indicating that the patterns they capture are inversely associated with price. All five retained PCs are statistically significant.
 
 ---
 
-### Model Performance
+## Price vs. PC Score Scatter Plots
 
-| Metric | Training Set | Test Set |
+| PC1 | PC2 | PC3 |
 |---|---|---|
-| R² | 0.514 | — |
-| Adjusted R² | 0.514 | — |
-| RMSE | ~$105,424 | ~$109,230 |
+| ![PricevsPc1](Figures/PricevsPc1.jpg) | ![PricevsPc2](Figures/PricevsPc2.jpg) | ![PricevsPc3](Figures/PricevsPc3.jpg) |
 
-> The small gap between training and test RMSE confirms good generalization. The higher RMSE compared to the full-feature regression model (Task 1) reflects the expected trade-off of dimensionality reduction — some predictive detail is sacrificed for a simpler, more stable model.
+| PC4 | PC5 | PC6 |
+|---|---|---|
+| ![PricevsPc4](Figures/PricevsPc4.jpg) | ![PricevsPc5](Figures/PricevsPc5.jpg) | ![PricevsPc6](Figures/PricevsPc6.jpg) |
+
+---
+
+## Model Performance
+
+| Metric | Value |
+|---|---|
+| R² | 0.514 |
+| Adjusted R² | 0.514 |
+| Training MSE | 11,114,897,570 |
+| Test MSE | 11,933,348,804 |
+| Training RMSE | ~$105,424 |
+| Test RMSE | ~$109,230 |
+
+**Generalization:** Training and test RMSE differ by only ~$3,800 — the model is not overfitting. The PC-based feature set generalizes consistently to unseen data.
+
+**Comparison with plain OLS (Week 5):** The PCR model explains ~51% of price variance vs. ~68% in the full-feature model. The ~17% drop in R² reflects the information cost of dimensionality reduction — 14 features compressed into 5 PC scores inevitably discard some signal.
+
+The gain: the PCR model has zero multicollinearity by construction, more stable coefficient estimates, and a simpler feature space. The choice between them depends on whether interpretability and stability or raw predictive power is the priority.
+
+---
+
+## Assumption Verification
+
+| Residuals vs. Fitted Values and Autocorrelation |
+|---|
+| ![residuals](Figures/residuals_analysis.jpg) |
+
+**Linearity & independence:** Residuals are centered near zero with no systematic curvature. ACF values stay within confidence bands — the independence assumption is satisfied. Durbin-Watson ≈ 1.97 confirms no significant autocorrelation.
+
+**Floor effect — a subtle but meaningful pattern:** For homes with predicted prices below ~$200,000, residuals show a sharp lower boundary — they rarely go negative. This indicates the model systematically overestimates lower-end home prices. The likely cause: a price floor in the dataset ($85,000 minimum) truncates the lower tail of the residual distribution. This is a known limitation of PCR when the target variable's range is bounded.
+
+**Heteroscedasticity:** Residual spread increases with fitted price, suggesting the model is less precise for high-end homes. This is a known characteristic of housing price data and would benefit from a log-price transformation or a more flexible model.
 
 ---
 
 ## How to Run
 
-### Prerequisites
-
 ```bash
 pip install -r requirements.txt
-```
-
-### Dataset Setup
-
-Place the dataset CSV inside the `data/` folder:
-
-```
-project/
-├── data/
-│   └── your_dataset.csv        ← put it here
-├── main.py
-├── requirements.txt
-└── README.md
-```
-
-### Run
-
-```bash
 python main.py
 ```
 
-The script handles standardization, PCA, component selection, forward stepwise regression, assumption verification, and all visualizations automatically. Outputs and plots are saved to the `Figures/` folder.
+All standardization, PCA, model training, and figures are generated and saved to `Figures/` automatically.
 
 ---
 
@@ -144,23 +145,15 @@ The script handles standardization, PCA, component selection, forward stepwise r
 
 ```
 project/
-├── data/                   # Raw input dataset (not included — see note above)
-├── Figures/                 # Generated plots and model results
-├── main.py                 # Entry point — run this
+├── data/                   # Dataset (not included — see note above)
+├── Figures/                # All generated plots and model outputs
+├── main.py                 # Entry point
 ├── requirements.txt
 └── README.md
 ```
 
-## Key Libraries Used
+---
 
-| Library | Purpose |
-|---|---|
-| `pandas` | Data manipulation |
-| `numpy` | Numerical operations |
-| `matplotlib` / `seaborn` | Visualization |
-| `scipy.stats` | Skewness, mode, Box-Cox transformation |
-| `statsmodels` | OLS regression, model summary, MSE |
-| `sklearn.decomposition.PCA` | Principal Component Analysis |
-| `sklearn.preprocessing.StandardScaler` | Standardization before PCA |
-| `sklearn.preprocessing.MinMaxScaler` | Supplementary normalization |
-| `sklearn.model_selection.train_test_split` | Train/test split |
+## Tech Stack
+
+`Python` · `pandas` · `NumPy` · `Matplotlib` · `Seaborn` · `SciPy` · `statsmodels` · `scikit-learn` (`StandardScaler`, `PCA`)
